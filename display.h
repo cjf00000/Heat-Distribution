@@ -30,11 +30,6 @@ FILE            *fp, *fopen ();
 Colormap	default_cmap;
 XColor		color[256];
 
-int min(int a, int b)
-{
-    return a<b ? a : b;
-}
-
 int temperatue_to_color_pixel(double t)
 {
 	return color[(int)((t-20.0f)/80.0f*256)].pixel;

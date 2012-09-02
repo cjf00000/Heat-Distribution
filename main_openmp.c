@@ -7,6 +7,8 @@
 #define start_time clock_gettime(CLOCK_MONOTONIC, &start);
 #define end_time clock_gettime(CLOCK_MONOTONIC, &finish); 
 #define time_elapsed_ns (long long)(finish.tv_sec-start.tv_sec)*1000000000 + finish.tv_nsec - start.tv_nsec
+#define time_elapsed_s (double)(finish.tv_sec-start.tv_sec) + (double)(finish.tv_nsec - start.tv_nsec)/1000000000
+
 
 int iteration, threads;
 TemperatureField *field;
@@ -15,13 +17,15 @@ TemperatureField *tempField, *swapField;
 int dx[4] = {0, -1, 0, 1};
 int dy[4] = {1, 0, -1, 0};
 
-int x, y;
+int x, y, iter_cnt;
 
 char temperature_iterate(TemperatureField *field)
 {
-	refreshField(field);
+	++iter_cnt;
+	refreshField(field, 0, 0);
 	int i, j, d;
 	char ret = 0;
+//	double error = 0, ferror = 0;
 #pragma omp parallel for schedule(dynamic) private(j) private(d)
 	for (i=0; i<field->x; ++i){
 		for (j=0; j<field->y; ++j)
@@ -43,6 +47,7 @@ char temperature_iterate(TemperatureField *field)
 int main(int argc, char **argv)
 {
     struct timespec start, finish;
+    start_time
     if (argc<5)
     {
 	    printf("Usage: %s x y iteration threads\n", argv[0]);
@@ -63,7 +68,6 @@ int main(int argc, char **argv)
 #endif
 
     int iter;
-    start_time
     for (iter=0; iter<iteration; iter++)
     {	
 	if (!temperature_iterate(field))
@@ -75,10 +79,13 @@ int main(int argc, char **argv)
 	end_time
 	if (time_elapsed_ns > FRAME_INTERVAL*1000000)
 	{
-		start_time;
 		XRedraw(field);
+		start_time;
 	}
 #endif
     }
+    printf("Finished in %d iterations.\n", iter_cnt);
+    end_time;
+    printf("%lf\n", time_elapsed_s);
     return 0;
 }

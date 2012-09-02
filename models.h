@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "const.h"
 
+#define legal(x, n) ( (x)>=0 && (x)<(n) )
+
 typedef struct TemperatureField
 {
 	int x, y;
@@ -43,17 +45,36 @@ void initField(TemperatureField *field)
 			field->t[i][j] = 20.0f;
 }
 
-void refreshField(TemperatureField *field)
+void refreshField(TemperatureField *field, int initX, int initY)
 {
 	int j;
 	for (j=field->y*3/10; j<field->y*7/10; ++j)
-	   field->t[0][j] = 100.0f;
+	    if (legal(-initX, field->x)&&legal(j-initY, field->y))
+		field->t[-initX][j-initY] = 100.0f;
+}
+
+TemperatureField* clone(TemperatureField *field, int X, int Y)
+{
+	int i, j;
+        TemperatureField *ret = malloc(sizeof(TemperatureField));
+	ret->x = X;
+	ret->y = Y;
+	ret->storage = malloc(sizeof(double)*ret->x*ret->y);
+	ret->t = malloc(sizeof(double*)*ret->x);
+	for (i=0; i<ret->x; ++i)
+		ret->t[i] = &ret->storage[i*ret->y];
+	for (i=0; i<X; ++i)
+		for (j=0; j<Y; ++j)
+			ret->t[i][j] = field->t[i][j];
+	puts("clone finished");
+	return ret;
 }
 
 void deleteField(TemperatureField *field)
 {
 	free(field->t);
 	free(field->storage);
+	//free(field);
 }
 
 #endif

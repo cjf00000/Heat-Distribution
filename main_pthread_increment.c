@@ -1,7 +1,8 @@
 #include "const.h"
 #include "models.h"
 #include "display.h"
-#include <omp.h>
+#include <pthread.h>
+#include <stdio.h>
 
 #define legal(x, n) ( (x)>=0 && (x)<(n) )
 #define start_time clock_gettime(CLOCK_MONOTONIC, &start);
@@ -12,20 +13,38 @@
 int iteration, threads;
 TemperatureField *field;
 TemperatureField *tempField, *swapField;
+pthread_t *threadPool;
+pthread_mutex_t mutex;
+int remainingX;
 
 int dx[4] = {0, -1, 0, 1};
 int dy[4] = {1, 0, -1, 0};
 
 int x, y, iter_cnt;
 
-char temperature_iterate(TemperatureField *field)
+typedef struct JobData
 {
-	++iter_cnt;
-	refreshField(field, 0, 0);
-	int i, j, d;
-	char ret = 0;
-#pragma omp parallel for schedule(dynamic) private(j) private(d)
-	for (i=0; i<field->x; ++i){
+    int lineStart, lineFinish;
+    char working;
+} JobData;
+
+JobData *jobs;
+int min(int x, int y){ if (x<y) return x; return y; }
+
+void* iterateLine(void* data)
+{
+    int i, j, d;
+    JobData *job = (JobData*)data;
+	job->lineFinish = min(job->lineFinish, field->x);
+	job->working = 0;
+    while (1)
+    {
+	    pthread_mutex_lock(&mutex);
+	    if (remainingX >=0 )
+		    i=remainingX--;
+	    else { pthread_mutex_unlock(&mutex); pthread_exit(NULL);}
+	    pthread_mutex_unlock(&mutex);
+
 		for (j=0; j<field->y; ++j)
 		{
 			tempField->t[i][j] = 0;
@@ -36,8 +55,26 @@ char temperature_iterate(TemperatureField *field)
 					tempField->t[i][j] += ROOM_TEMP;
 			tempField->t[i][j] /= 4;
 			if (fabs(tempField->t[i][j] - field->t[i][j])>EPSILON && i)
-				ret = 1;
+				job->working = 1;
 		}
+    }
+    pthread_exit(NULL);
+}
+
+char temperature_iterate()
+{
+	++iter_cnt;
+	refreshField(field, 0, 0);
+	int i;
+
+	remainingX = field->x - 1;
+	for (i=0; i<threads; ++i)
+		pthread_create(&threadPool[i], NULL, iterateLine, (void*)&jobs[i]);
+	char ret = 0;
+	for (i=0; i<threads; ++i)
+	{
+		pthread_join(threadPool[i], NULL);
+		ret = ret | jobs[i].working;
 	}
 	return ret;
 }
@@ -54,15 +91,18 @@ int main(int argc, char **argv)
     sscanf(argv[2], "%d", &y);
     sscanf(argv[3], "%d", &iteration);
     sscanf(argv[4], "%d", &threads);
-    omp_set_num_threads(threads);
 
+    pthread_mutex_init(&mutex, NULL);
     field = malloc(sizeof(TemperatureField));
     tempField = malloc(sizeof(TemperatureField));
+    threadPool = malloc(sizeof(pthread_t)*threads);
+    jobs = malloc(sizeof(JobData)*threads);
     field->x = y;
     field->y = x;
 #ifdef DISPLAY
     XWindow_Init(field);
 #endif
+
 
     int iter, inc;
     int *X_Size = malloc(sizeof(int)*INCREMENT_TIME);
@@ -93,7 +133,7 @@ int main(int argc, char **argv)
 #endif
 	for (iter=0; iter<iteration; iter++)
         {	
-	   if (!temperature_iterate(field))
+	   if (!temperature_iterate())
 		break;
 	   swapField = field;
 	   field = tempField;
@@ -108,12 +148,18 @@ int main(int argc, char **argv)
 #endif	
 	}
     }
+#ifdef DISPLAY
+    XRedraw(field);
+#endif
     deleteField(field);
     deleteField(tempField);
     free(X_Size);
     free(Y_Size);
+    free(threadPool);
+    free(jobs);
     printf("Finished in %d iterations.\n", iter_cnt);
     end_time;
     printf("%lf\n", time_elapsed_s);
+    pthread_exit(NULL);
     return 0;
 }
