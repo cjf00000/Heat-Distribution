@@ -35,6 +35,7 @@ void newField(TemperatureField *field, int x, int y, int sourceX, int sourceY)
 				field->t[i][j] = temp.t[(int)(i*scaleFactorX)][(int)(j*scaleFactorY)];
 		deleteField(&temp);
 	}
+	else memset(field->storage, 0, sizeof(double)*x*y);
 }
 
 void initField(TemperatureField *field)
@@ -45,11 +46,11 @@ void initField(TemperatureField *field)
 			field->t[i][j] = 20.0f;
 }
 
-void refreshField(TemperatureField *field, int initX, int initY)
+void refreshField(TemperatureField *field, int initX, int initY, int thisX, int thisY, int allX, int allY)
 {
 	int j;
-	for (j=field->y*3/10; j<field->y*7/10; ++j)
-	    if (legal(-initX, field->x)&&legal(j-initY, field->y))
+	for (j=allY*3/10; j<allY*7/10; ++j)
+	    if (legal(-initX, thisX)&&legal(j-initY, thisY))
 		field->t[-initX][j-initY] = 100.0f;
 }
 
@@ -66,7 +67,6 @@ TemperatureField* clone(TemperatureField *field, int X, int Y)
 	for (i=0; i<X; ++i)
 		for (j=0; j<Y; ++j)
 			ret->t[i][j] = field->t[i][j];
-	puts("clone finished");
 	return ret;
 }
 

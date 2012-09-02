@@ -104,7 +104,6 @@ void XWindow_Init(TemperatureField *field)
 
 void XResize(TemperatureField *field)
 {
-    printf("%d %d\n", field->x, field->y);
     XResizeWindow(display, win, field->y, field->x);
 }
 
