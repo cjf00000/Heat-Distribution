@@ -47,7 +47,7 @@ double temperature_iterate(TemperatureField *field, int initX, int initY)
 
 	/* Start sending process... */
 	//Up
-	if (rank_x>0) MPI_Send(tempField->t[1], blockSizeY, MPI_DOUBLE, world_rank-sq, 0, MPI_COMM_WORLD);
+	if (rank_x>0) MPI_Send(tempField->t[1]+1, blockSizeY, MPI_DOUBLE, world_rank-sq, 0, MPI_COMM_WORLD);
 	//Down
 	if (rank_x<sq-1) MPI_Send(tempField->t[blockSizeX]+1, blockSizeY, MPI_DOUBLE, world_rank+sq, 1, MPI_COMM_WORLD);
 	//Left
@@ -80,6 +80,17 @@ double temperature_iterate(TemperatureField *field, int initX, int initY)
 	else fillReceiveBuffer;
 	for (i=0; i<blockSizeX; ++i) tempField->t[i+1][0] = recv_line_buffer[i];
 
+//		if (world_rank==0)
+//		{
+//		    printf("Process %d tempField:\n", world_rank);
+//		    for (i=0; i<tempField->x; ++i)
+//		    {
+//			    for (j=0; j<tempField->y; ++j)
+//			    	printf("%lf ", tempField->t[i][j]);
+//			    puts("");
+//		    }
+//		    puts("");
+//		}
 	/* Calculation */
 	double ret = 0;
 	for (i=0; i<blockSizeX; ++i){
@@ -93,6 +104,17 @@ double temperature_iterate(TemperatureField *field, int initX, int initY)
 				ret += fabs(field->t[i][j]-tempField->t[i+1][j+1]);
 		}
 	}
+//		if (world_rank==0)
+//		{
+//		    printf("Process %d field:\n", world_rank);
+//		    for (i=0; i<field->x; ++i)
+//		    {
+//			    for (j=0; j<field->y; ++j)
+//			    	printf("%lf ", field->t[i][j]);
+//			    puts("");
+//		    }
+//		    puts("");
+//		}
 	return ret;
 }
 
@@ -217,6 +239,13 @@ int main(int argc, char **argv)
 	   if (recvedRes<EPSILON)
 		break;
 	   MPI_Barrier(MPI_COMM_WORLD);
+#ifdef DISPLAY
+	   if (iter%10==0)
+	   {
+		gather(allField, blockSizeX, blockSizeY, field);
+		if (world_rank==0)XRedraw(allField);
+	   }
+#endif
 	}
 	free(recv_line_buffer);
 	free(send_line_buffer1);
@@ -224,28 +253,17 @@ int main(int argc, char **argv)
 	gather(allField, blockSizeX, blockSizeY, field);
 //	puts("finish iteration");
 //
-//	if (world_rank==0)
-//	{
-//	    printf("Process %d field:\n", world_rank);
-//	    for (i=0; i<field->x; ++i)
-//	    {
-//		    for (j=0; j<field->y; ++j)
-//		    	printf("%lf ", field->t[i][j]);
-//		    puts("");
-//	    }
-//	    puts("");
-//	}
-//	if (world_rank==0)
-//	{
-//	    printf("All field:\n", world_rank);
-//	    for (i=0; i<allField->x; ++i)
-//	    {
-//		    for (j=0; j<allField->y; ++j)
-//		    	printf("%lf ", allField->t[i][j]);
-//		    puts("");
-//	    }
-//	    puts("");
-//	}
+	if (world_rank==0)
+	{
+	    printf("All field:\n", world_rank);
+	    for (i=0; i<allField->x; ++i)
+	    {
+		    for (j=0; j<allField->y; ++j)
+		    	printf("%lf ", allField->t[i][j]);
+		    puts("");
+	    }
+	    puts("");
+	}
 #ifdef DISPLAY
 	if (world_rank==0) XRedraw(allField);
 #endif 
