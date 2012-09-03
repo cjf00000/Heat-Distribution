@@ -20,6 +20,8 @@ pthread_t *threadPool;
 pthread_mutex_t *subThreadWakeUp, *subThreadFinished;
 int *threadID, terminate;
 double *error;
+int INCREMENT_TIME;
+double INCREMENT, EPSILON;
 
 int dx[4] = {0, -1, 0, 1};
 int dy[4] = {1, 0, -1, 0};
@@ -80,14 +82,17 @@ int main(int argc, char **argv)
 {
     struct timespec start, finish;
     start_time
-    if (argc<5)
+    if (argc<8)
     {
-	    printf("Usage: %s x y iteration threads\n", argv[0]);
+	    printf("Usage: %s x y iteration INCREMENT_TIME, INCREMENT threads EPSILON\n", argv[0]);
     }
     sscanf(argv[1], "%d", &x);
     sscanf(argv[2], "%d", &y);
     sscanf(argv[3], "%d", &iteration);
-    sscanf(argv[4], "%d", &threads);
+    sscanf(argv[4], "%d", &INCREMENT_TIME);
+    sscanf(argv[5], "%lf", &INCREMENT);
+    sscanf(argv[6], "%d", &threads);
+    sscanf(argv[7], "%lf", &EPSILON);
 
     field = malloc(sizeof(TemperatureField));
     tempField = malloc(sizeof(TemperatureField));

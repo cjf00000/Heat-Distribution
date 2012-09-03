@@ -54,7 +54,7 @@ void refreshField(TemperatureField *field, int initX, int initY, int thisX, int 
 		field->t[-initX][j-initY] = 100.0f;
 }
 
-TemperatureField* clone(TemperatureField *field, int X, int Y)
+TemperatureField* myClone(TemperatureField *field, int X, int Y)
 {
 	int i, j;
         TemperatureField *ret = malloc(sizeof(TemperatureField));

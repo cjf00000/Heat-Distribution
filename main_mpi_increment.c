@@ -18,6 +18,9 @@
 #define NOT_FIRE_PLACE (i||rank_x)
 
 int iteration;
+int INCREMENT_TIME;
+double INCREMENT;
+double EPSILON;
 TemperatureField *field, *allField;
 TemperatureField *tempField;
 double *recv_line_buffer;
@@ -136,14 +139,16 @@ int main(int argc, char **argv)
 {
     struct timespec start, finish;
     if (world_rank==0) start_time
-    if (argc<4)
+    if (argc<7)
     {
-	    printf("Usage: %s x y iteration\n", argv[0]);
-	    return 0;
+	    printf("Usage: %s x y iteration INCREMENT_TIME, INCREMENT EPSILON\n", argv[0]);
     }
     sscanf(argv[1], "%d", &x);
     sscanf(argv[2], "%d", &y);
     sscanf(argv[3], "%d", &iteration);
+    sscanf(argv[4], "%d", &INCREMENT_TIME);
+    sscanf(argv[5], "%lf", &INCREMENT);
+    sscanf(argv[6], "&lf", &EPSILON);
 
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);

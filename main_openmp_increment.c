@@ -11,6 +11,9 @@
 #define NOT_FIRE_PLACE i
 
 int iteration, threads;
+int INCREMENT_TIME;
+double EPSILON;
+double INCREMENT;
 TemperatureField *field;
 TemperatureField *tempField, *swapField;
 
@@ -46,15 +49,18 @@ double temperature_iterate(TemperatureField *field)
 int main(int argc, char **argv)
 {
     struct timespec start, finish;
-    start_time
-    if (argc<5)
+    start_time 
+    if (argc<8)
     {
-	    printf("Usage: %s x y iteration threads\n", argv[0]);
+	    printf("Usage: %s x y iteration INCREMENT_TIME, INCREMENT threads EPSILON\n", argv[0]);
     }
     sscanf(argv[1], "%d", &x);
     sscanf(argv[2], "%d", &y);
     sscanf(argv[3], "%d", &iteration);
-    sscanf(argv[4], "%d", &threads);
+    sscanf(argv[4], "%d", &INCREMENT_TIME);
+    sscanf(argv[5], "%lf", &INCREMENT);
+    sscanf(argv[6], "%d", &threads);
+    sscanf(argv[7], "%lf", &EPSILON);
     omp_set_num_threads(threads);
 
     field = malloc(sizeof(TemperatureField));
