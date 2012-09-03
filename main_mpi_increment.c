@@ -110,6 +110,7 @@ void scatter(TemperatureField *source, int X, int Y, TemperatureField *dest)
 			send_data[cnt++] = source->t[i][j];
     }
     MPI_Scatter(send_data, X*Y, MPI_DOUBLE, dest->storage, X*Y, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    free(send_data);
 }
 
 ///Source must be full, i.e. X*Y
@@ -128,6 +129,7 @@ void gather(TemperatureField *dest, int X, int Y, TemperatureField *source)
 		   for (j=0; j<Y; ++j)
 			   dest->t[k/sq*blockSizeX+i][k%sq*blockSizeY+j] = recv_data[cnt++];
     }
+    free(recv_data);
 }
 
 int main(int argc, char **argv)
@@ -211,12 +213,20 @@ int main(int argc, char **argv)
 
 	for (iter=0; iter<iteration; iter++)
         {
+    puts("a");
 	   double ret= temperature_iterate(field, world_rank/sq*blockSizeX, world_rank%sq*blockSizeY);
 	   double recvedRes = 0;
 	   MPI_Allreduce(&ret, &recvedRes, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	   if (recvedRes<EPSILON)
 		break;
 	   MPI_Barrier(MPI_COMM_WORLD);
+#ifdef DISPLAY
+	//if (iter%100==0)
+	//{
+	    //gather(allField, blockSizeX, blockSizeY, field);
+	  //  if (world_rank==0) XRedraw(allField);
+	//}
+#endif 
 	}
 	free(recv_line_buffer);
 	free(send_line_buffer1);
