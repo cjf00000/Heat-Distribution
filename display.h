@@ -32,7 +32,7 @@ XColor		color[256];
 
 int temperatue_to_color_pixel(double t)
 {
-	return color[(int)((t-20.0f)/80.0f*256)].pixel;
+	return color[(int)(t/5.0f)].pixel;
 }
 
 void XWindow_Init(TemperatureField *field)
@@ -94,9 +94,11 @@ void XWindow_Init(TemperatureField *field)
 
 	/* create color */
 	int i;
-	for (i=0; i<256; ++i)
+	for (i=0; i<20; ++i)
 	{
-	    color[i].red = i*256;
+	    color[i].green = rand()%65535;
+	    color[i].red = rand()%65535;
+	    color[i].blue = rand()%65535;
 	    color[i].flags = DoRed | DoGreen | DoBlue;
 	    XAllocColor(display, default_cmap, &color[i]);
 	}
