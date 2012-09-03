@@ -15,8 +15,6 @@ int iteration, threads;
 TemperatureField *field;
 TemperatureField *tempField, *swapField;
 pthread_t *threadPool;
-pthread_mutex_t mutex;
-int remainingX;
 
 int dx[4] = {0, -1, 0, 1};
 int dy[4] = {1, 0, -1, 0};
@@ -29,8 +27,6 @@ typedef struct JobData
     double error;
 } JobData;
 
-int lineCnt;
-
 JobData *jobs;
 int min(int x, int y){ if (x<y) return x; return y; }
 
@@ -42,12 +38,7 @@ void* iterateLine(void* data)
     job->error = 0;
     while (1)
     {
-	    pthread_mutex_lock(&mutex);
-	    if (remainingX >=0 )
-		    i=remainingX--;
-	    else { pthread_mutex_unlock(&mutex); pthread_exit(NULL);}
-	    pthread_mutex_unlock(&mutex);
-
+	    for (i=job->lineStart; i<jobs->lineFinish; ++i)		    
 		for (j=0; j<field->y; ++j)
 		{
 			tempField->t[i][j] = 0;
@@ -60,7 +51,6 @@ void* iterateLine(void* data)
 			if (NOT_FIRE_PLACE)
 				job->error += fabs(tempField->t[i][j] - field->t[i][j]);
 		}
-	    ++lineCnt;
     }
     pthread_exit(NULL);
 }
@@ -71,17 +61,20 @@ double temperature_iterate()
 	refreshField(field, 0, 0, field->x, field->y, field->x, field->y);
 	int i;
 
-	remainingX = field->x - 1;
-	lineCnt=0;
+	int blockSize = field->x/threads + !!(field->x%threads);
+
 	for (i=0; i<threads; ++i)
+	{
+		jobs[i].lineStart = i*blockSize;
+		jobs[i].lineFinish = (i+1)*blockSize;
 		pthread_create(&threadPool[i], NULL, iterateLine, (void*)&jobs[i]);
+	}
 	double error = 0;
 	for (i=0; i<threads; ++i)
 	{
 		pthread_join(threadPool[i], NULL);
 		error = error + jobs[i].error;
 	}
-	printf("%d\n", lineCnt);
 	return error;
 }
 
@@ -98,7 +91,6 @@ int main(int argc, char **argv)
     sscanf(argv[3], "%d", &iteration);
     sscanf(argv[4], "%d", &threads);
 
-    pthread_mutex_init(&mutex, NULL);
     field = malloc(sizeof(TemperatureField));
     tempField = malloc(sizeof(TemperatureField));
     threadPool = malloc(sizeof(pthread_t)*threads);
