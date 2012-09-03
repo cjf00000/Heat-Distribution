@@ -9,6 +9,7 @@
 #define end_time clock_gettime(CLOCK_MONOTONIC, &finish); 
 #define time_elapsed_ns (long long)(finish.tv_sec-start.tv_sec)*1000000000 + finish.tv_nsec - start.tv_nsec
 #define time_elapsed_s (double)(finish.tv_sec-start.tv_sec) + (double)(finish.tv_nsec - start.tv_nsec)/1000000000
+#define NOT_FIRE_PLACE i
 
 int iteration, threads;
 TemperatureField *field;
@@ -25,7 +26,7 @@ int x, y, iter_cnt;
 typedef struct JobData
 {
     int lineStart, lineFinish;
-    char working;
+    double error;
 } JobData;
 
 JobData *jobs;
@@ -35,8 +36,8 @@ void* iterateLine(void* data)
 {
     int i, j, d;
     JobData *job = (JobData*)data;
-	job->lineFinish = min(job->lineFinish, field->x);
-	job->working = 0;
+    job->lineFinish = min(job->lineFinish, field->x);
+    job->error = 0;
     while (1)
     {
 	    pthread_mutex_lock(&mutex);
@@ -54,29 +55,29 @@ void* iterateLine(void* data)
 				else
 					tempField->t[i][j] += ROOM_TEMP;
 			tempField->t[i][j] /= 4;
-			if (fabs(tempField->t[i][j] - field->t[i][j])>EPSILON && i)
-				job->working = 1;
+			if (NOT_FIRE_PLACE)
+				job->error += fabs(tempField->t[i][j] - field->t[i][j]);
 		}
     }
     pthread_exit(NULL);
 }
 
-char temperature_iterate()
+double temperature_iterate()
 {
 	++iter_cnt;
-	refreshField(field, 0, 0);
+	refreshField(field, 0, 0, field->x, field->y, field->x, field->y);
 	int i;
 
 	remainingX = field->x - 1;
 	for (i=0; i<threads; ++i)
 		pthread_create(&threadPool[i], NULL, iterateLine, (void*)&jobs[i]);
-	char ret = 0;
+	double error = 0;
 	for (i=0; i<threads; ++i)
 	{
 		pthread_join(threadPool[i], NULL);
-		ret = ret | jobs[i].working;
+		error = error + jobs[i].error;
 	}
-	return ret;
+	return error;
 }
 
 int main(int argc, char **argv)
@@ -133,7 +134,7 @@ int main(int argc, char **argv)
 #endif
 	for (iter=0; iter<iteration; iter++)
         {	
-	   if (!temperature_iterate())
+	   if (temperature_iterate()<EPSILON)
 		break;
 	   swapField = field;
 	   field = tempField;
