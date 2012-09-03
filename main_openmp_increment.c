@@ -8,6 +8,7 @@
 #define end_time clock_gettime(CLOCK_MONOTONIC, &finish); 
 #define time_elapsed_ns (long long)(finish.tv_sec-start.tv_sec)*1000000000 + finish.tv_nsec - start.tv_nsec
 #define time_elapsed_s (double)(finish.tv_sec-start.tv_sec) + (double)(finish.tv_nsec - start.tv_nsec)/1000000000
+#define NOT_FIRE_PLACE i
 
 int iteration, threads;
 TemperatureField *field;
@@ -18,13 +19,13 @@ int dy[4] = {1, 0, -1, 0};
 
 int x, y, iter_cnt;
 
-char temperature_iterate(TemperatureField *field)
+double temperature_iterate(TemperatureField *field)
 {
 	++iter_cnt;
-	refreshField(field, 0, 0);
+	refreshField(field, 0, 0, field->x, field->y, field->x, field->y);
 	int i, j, d;
-	char ret = 0;
-#pragma omp parallel for schedule(dynamic) private(j) private(d)
+	double ret = 0;
+#pragma omp parallel for schedule(static) private(j) private(d) reduction(+:ret)
 	for (i=0; i<field->x; ++i){
 		for (j=0; j<field->y; ++j)
 		{
@@ -35,8 +36,8 @@ char temperature_iterate(TemperatureField *field)
 				else
 					tempField->t[i][j] += ROOM_TEMP;
 			tempField->t[i][j] /= 4;
-			if (fabs(tempField->t[i][j] - field->t[i][j])>EPSILON && i)
-				ret = 1;
+			if (NOT_FIRE_PLACE)
+				ret += fabs(tempField->t[i][j] - field->t[i][j]);
 		}
 	}
 	return ret;
@@ -92,9 +93,14 @@ int main(int argc, char **argv)
         XResize(field);
 #endif
 	for (iter=0; iter<iteration; iter++)
-        {	
-	   if (!temperature_iterate(field))
+        {
+	   double error = temperature_iterate(field);
+	   if (error<EPSILON)
+	   {
+		   printf("Finished. iteration=%d, error=%lf\n", iter, error);
+
 		break;
+	   }
 	   swapField = field;
 	   field = tempField;
 	   tempField = swapField;

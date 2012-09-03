@@ -29,6 +29,8 @@ typedef struct JobData
     double error;
 } JobData;
 
+int lineCnt;
+
 JobData *jobs;
 int min(int x, int y){ if (x<y) return x; return y; }
 
@@ -58,6 +60,7 @@ void* iterateLine(void* data)
 			if (NOT_FIRE_PLACE)
 				job->error += fabs(tempField->t[i][j] - field->t[i][j]);
 		}
+	    ++lineCnt;
     }
     pthread_exit(NULL);
 }
@@ -69,6 +72,7 @@ double temperature_iterate()
 	int i;
 
 	remainingX = field->x - 1;
+	lineCnt=0;
 	for (i=0; i<threads; ++i)
 		pthread_create(&threadPool[i], NULL, iterateLine, (void*)&jobs[i]);
 	double error = 0;
@@ -77,6 +81,7 @@ double temperature_iterate()
 		pthread_join(threadPool[i], NULL);
 		error = error + jobs[i].error;
 	}
+	printf("%d\n", lineCnt);
 	return error;
 }
 
@@ -134,8 +139,11 @@ int main(int argc, char **argv)
 #endif
 	for (iter=0; iter<iteration; iter++)
         {	
-	   if (temperature_iterate()<EPSILON)
+	   double error = temperature_iterate();
+	   if (error<EPSILON){
+		   printf("Finished. iteration=%d, error=%lf\n", iter, error);
 		break;
+	   }
 	   swapField = field;
 	   field = tempField;
 	   tempField = swapField;
