@@ -110,7 +110,15 @@ int main(int argc, char **argv)
 	   {
 		start_time;
 		XRedraw(field);
-	   }
+	   } 	   
+//	    	   puts("Field:");
+//		   int i, j;
+//        	    for (i=0; i<field->x; ++i)
+//        	    {
+//        		    for (j=0; j<field->y; ++j)
+//        		    	printf("%lf ", field->t[i][j]);
+//        		    puts("");
+//        	    }
 #endif	
 	}
     }

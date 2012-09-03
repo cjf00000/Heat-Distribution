@@ -18,7 +18,7 @@ pthread_increment: main_pthread_increment.c display.h models.h const.h
 mpi_increment: main_mpi_increment.c display.h models.h const.h
 	${MPICC} main_mpi_increment.c -o temperature_mpi ${CFLAG} 
 
-all: seq openmp_increment mpi_increment pthread_increment
+all: openmp_increment mpi_increment pthread_increment
 
 clean:
 	rm -f *~

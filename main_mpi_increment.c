@@ -148,11 +148,11 @@ int main(int argc, char **argv)
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    if (world_size<4)
-    {
-	puts("At least 4 processes.");
-	return 0;
-    }
+//    if (world_size<4)
+//    {
+//	puts("At least 4 processes.");
+//	return 0;
+//    }
 
     field = malloc(sizeof(TemperatureField));
     tempField = malloc(sizeof(TemperatureField));
@@ -211,13 +211,22 @@ int main(int argc, char **argv)
 	   }
 	   MPI_Barrier(MPI_COMM_WORLD);
 #ifdef DISPLAY
-	   if (iter%100==0)
+	   if (iter%1==0)
 	   {
 		gather(allField, blockSizeX, blockSizeY, field);
-		if (world_rank==0)XRedraw(allField);
+		if (world_rank==0){
+			XRedraw(allField);
+//        	    printf("All field:\n", world_rank);
+//        	    for (i=0; i<allField->x; ++i)
+//        	    {
+//        		    for (j=0; j<allField->y; ++j)
+//        		    	printf("%lf ", allField->t[i][j]);
+//        		    puts("");
+//        	    }
+        	}    
 	   }
 #endif
-	}    
+	}
 	free(recv_line_buffer);
 	free(send_line_buffer1);
 	free(send_line_buffer2);

@@ -11,45 +11,50 @@
 #define time_elapsed_s (double)(finish.tv_sec-start.tv_sec) + (double)(finish.tv_nsec - start.tv_nsec)/1000000000
 #define NOT_FIRE_PLACE i
 
+#define update(dx, dy) if ( legal(i+dx, field->x) && legal(j+dy, field->y) ) tempField->t[i][j] += field->t[i+dx][j+dy]; else tempField->t[i][j] += ROOM_TEMP;
+
 int iteration, threads;
 TemperatureField *field;
 TemperatureField *tempField, *swapField;
 pthread_t *threadPool;
+pthread_mutex_t *subThreadWakeUp, *subThreadFinished;
+int *threadID, terminate;
+double *error;
 
 int dx[4] = {0, -1, 0, 1};
 int dy[4] = {1, 0, -1, 0};
 
 int x, y, iter_cnt;
 
-typedef struct JobData
-{
-    int lineStart, lineFinish;
-    double error;
-} JobData;
-
-JobData *jobs;
 int min(int x, int y){ if (x<y) return x; return y; }
 
 void* iterateLine(void* data)
-{
-    int i, j, d;
-    JobData *job = (JobData*)data;
-    job->lineFinish = min(job->lineFinish, field->x);
-    job->error = 0;
-    for (i=job->lineStart; i<job->lineFinish; ++i) 
+{   
+    int threadID = *((int*)data);
+    while (1)
     {
-	for (j=0; j<field->y; ++j)
-	{
-		tempField->t[i][j] = 0;
-		for (d=0; d<4; ++d)
-			if ( legal(i+dx[d], field->x) && legal(j+dy[d], field->y) )
-				tempField->t[i][j] += field->t[i+dx[d]][j+dy[d]];
-			else
-				tempField->t[i][j] += ROOM_TEMP;
-		tempField->t[i][j] /= 4;
-		if (NOT_FIRE_PLACE)
-			job->error += fabs(tempField->t[i][j] - field->t[i][j]);
-	}
+	    pthread_mutex_lock(&subThreadWakeUp[threadID]);
+	    if (terminate) break;
+	    int blockSize = field->x/threads + !!(field->x%threads);
+	    int lineStart = blockSize*threadID;
+	    int lineEnd = min(blockSize*(threadID+1), field->x);
+	    error[threadID]=0;
+
+	    int i, j, d;
+	    for (i=lineStart; i<lineEnd; ++i) 
+		for (j=0; j<field->y; ++j)
+		{
+			tempField->t[i][j] = 0;
+			for (d=0; d<4; ++d)
+				if ( legal(i+dx[d], field->x) && legal(j+dy[d], field->y) )
+					tempField->t[i][j] += field->t[i+dx[d]][j+dy[d]];
+				else
+					tempField->t[i][j] += ROOM_TEMP;
+			tempField->t[i][j] /= 4;
+			if (NOT_FIRE_PLACE)
+				error[threadID] += fabs(tempField->t[i][j] - field->t[i][j]);
+		}
+	    pthread_mutex_unlock(&subThreadFinished[threadID]);
     }
     pthread_exit(NULL);
 }
@@ -60,21 +65,15 @@ double temperature_iterate()
 	refreshField(field, 0, 0, field->x, field->y, field->x, field->y);
 	int i;
 
-	int blockSize = field->x/threads + !!(field->x%threads);
+	for (i=0; i<threads; ++i)
+		pthread_mutex_unlock(&subThreadWakeUp[i]);
+	for (i=0; i<threads; ++i)
+		pthread_mutex_lock(&subThreadFinished[i]);
+	double sumError = 0;
+	for (i=0; i<threads; ++i)
+		sumError += error[i];
 
-	for (i=0; i<threads; ++i)
-	{
-		jobs[i].lineStart = i*blockSize;
-		jobs[i].lineFinish = (i+1)*blockSize;
-		pthread_create(&threadPool[i], NULL, iterateLine, (void*)&jobs[i]);
-	}
-	double error = 0;
-	for (i=0; i<threads; ++i)
-	{
-		pthread_join(threadPool[i], NULL);
-		error = error + jobs[i].error;
-	}
-	return error;
+	return sumError;
 }
 
 int main(int argc, char **argv)
@@ -93,13 +92,27 @@ int main(int argc, char **argv)
     field = malloc(sizeof(TemperatureField));
     tempField = malloc(sizeof(TemperatureField));
     threadPool = malloc(sizeof(pthread_t)*threads);
-    jobs = malloc(sizeof(JobData)*threads);
+    subThreadWakeUp = malloc(sizeof(pthread_mutex_t)*threads);
+    subThreadFinished = malloc(sizeof(pthread_mutex_t)*threads);
+    threadID = malloc(sizeof(int)*threads);
+    error = malloc(sizeof(double)*threads);
+    terminate = 0;
     field->x = y;
     field->y = x;
 #ifdef DISPLAY
     XWindow_Init(field);
 #endif
 
+    int i;
+    for (i=0; i<threads; ++i)
+    {
+	pthread_mutex_init(&subThreadWakeUp[i], NULL);
+	pthread_mutex_init(&subThreadFinished[i], NULL);
+	pthread_mutex_lock(&subThreadWakeUp[i]);
+	pthread_mutex_lock(&subThreadFinished[i]);
+	threadID[i] = i;
+	pthread_create(&threadPool[i], NULL, iterateLine, &threadID[i]);
+    }
 
     int iter, inc;
     int *X_Size = malloc(sizeof(int)*INCREMENT_TIME);
@@ -150,13 +163,18 @@ int main(int argc, char **argv)
     }
 #ifdef DISPLAY
     XRedraw(field);
+    usleep(10000000);
 #endif
     deleteField(field);
     deleteField(tempField);
     free(X_Size);
     free(Y_Size);
     free(threadPool);
-    free(jobs);
+    for (i=0; i<threads; ++i)
+    {
+	    terminate = 1;
+	    pthread_mutex_unlock(&subThreadWakeUp[i]);
+    }
     printf("Finished in %d iterations.\n", iter_cnt);
     end_time;
     printf("%lf\n", time_elapsed_s);
