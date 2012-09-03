@@ -14,6 +14,8 @@
 #define rank_x (world_rank/sq)
 #define rank_y (world_rank%sq)
 #define rank_id(x, y) ((x)*sq + (y))
+#define sqr(x) ((x)*(x))
+#define NOT_FIRE_PLACE (i||rank_x)
 
 int iteration;
 TemperatureField *field, *allField;
@@ -34,7 +36,7 @@ int blockSizeY;
 
 int max(int a, int b){ return a>b ? a: b; }
 
-char temperature_iterate(TemperatureField *field, int initX, int initY)
+double temperature_iterate(TemperatureField *field, int initX, int initY)
 {
 	int i, j, d;
 	++iter_cnt;
@@ -79,7 +81,7 @@ char temperature_iterate(TemperatureField *field, int initX, int initY)
 	for (i=0; i<blockSizeX; ++i) tempField->t[i+1][0] = recv_line_buffer[i];
 
 	/* Calculation */
-	char ret = 0;
+	double ret = 0;
 	for (i=0; i<blockSizeX; ++i){
 		for (j=0; j<blockSizeY; ++j)
 		{
@@ -87,8 +89,8 @@ char temperature_iterate(TemperatureField *field, int initX, int initY)
 			for (d=0; d<4; ++d)
 			    field->t[i][j] += tempField->t[i+dx[d]+1][j+dy[d]+1];
 			field->t[i][j] /= 4;
-			if (fabs(field->t[i][j] - tempField->t[i+1][j+1])>EPSILON && (i||rank_x) )
-				ret = 1;
+			if (NOT_FIRE_PLACE)
+				ret += fabs(field->t[i][j]-tempField->t[i+1][j+1]);
 		}
 	}
 	return ret;
@@ -209,10 +211,10 @@ int main(int argc, char **argv)
 
 	for (iter=0; iter<iteration; iter++)
         {
-	   char ret= temperature_iterate(field, world_rank/sq*blockSizeX, world_rank%sq*blockSizeY);
-	   char recvedRes = 0;
-	   MPI_Allreduce(&ret, &recvedRes, 1, MPI_CHAR, MPI_LOR, MPI_COMM_WORLD);
-	   if (!recvedRes)
+	   double ret= temperature_iterate(field, world_rank/sq*blockSizeX, world_rank%sq*blockSizeY);
+	   double recvedRes = 0;
+	   MPI_Allreduce(&ret, &recvedRes, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	   if (recvedRes<EPSILON)
 		break;
 	   MPI_Barrier(MPI_COMM_WORLD);
 	}
