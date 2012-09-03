@@ -36,21 +36,20 @@ void* iterateLine(void* data)
     JobData *job = (JobData*)data;
     job->lineFinish = min(job->lineFinish, field->x);
     job->error = 0;
-    while (1)
+    for (i=job->lineStart; i<job->lineFinish; ++i) 
     {
-	    for (i=job->lineStart; i<jobs->lineFinish; ++i)		    
-		for (j=0; j<field->y; ++j)
-		{
-			tempField->t[i][j] = 0;
-			for (d=0; d<4; ++d)
-				if ( legal(i+dx[d], field->x) && legal(j+dy[d], field->y) )
-					tempField->t[i][j] += field->t[i+dx[d]][j+dy[d]];
-				else
-					tempField->t[i][j] += ROOM_TEMP;
-			tempField->t[i][j] /= 4;
-			if (NOT_FIRE_PLACE)
-				job->error += fabs(tempField->t[i][j] - field->t[i][j]);
-		}
+	for (j=0; j<field->y; ++j)
+	{
+		tempField->t[i][j] = 0;
+		for (d=0; d<4; ++d)
+			if ( legal(i+dx[d], field->x) && legal(j+dy[d], field->y) )
+				tempField->t[i][j] += field->t[i+dx[d]][j+dy[d]];
+			else
+				tempField->t[i][j] += ROOM_TEMP;
+		tempField->t[i][j] /= 4;
+		if (NOT_FIRE_PLACE)
+			job->error += fabs(tempField->t[i][j] - field->t[i][j]);
+	}
     }
     pthread_exit(NULL);
 }
