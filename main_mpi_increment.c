@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     sscanf(argv[3], "%d", &iteration);
     sscanf(argv[4], "%d", &INCREMENT_TIME);
     sscanf(argv[5], "%lf", &INCREMENT);
-    sscanf(argv[6], "&lf", &EPSILON);
+    sscanf(argv[6], "%lf", &EPSILON);
 
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
